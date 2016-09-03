@@ -112,37 +112,59 @@ wm(window::Widget, prop::AbstractString, args...; kwargs...) = tcl("wm", prop, w
 
 ## Take a function, get its args as array of symbols. There must be better way...
 ## Helper functions for bind callback
-#function get_args(li::LambdaInfo)
-#    e = li.ast
-#    if !isa(e, Expr)
-#        e = Base.uncompressed_ast(li)
-#    end
-#    argnames = e.args[1]
-#    ## return array of symbols -- not args
-#    if isa(argnames[1], Expr)
-#        argnames = map(u -> u.args[1], argnames)
-#    end
-#
-#    argnames
-#end
-
-#function get_args(m::Method)
-#    li = m.func.code
-#    get_args(li)
-#end
-
-#function get_args(f::Function)
-#    try
-#        get_args(f.env.defs.func)
-#    catch e
-#        get_args(f.code)
-#    end
-#end
-
-function get_args(f::Function)
-    return first(methods(f)).lambda_template.slotnames[2:end]    
+if VERSION > v"0.5-"
+function get_args(li::LambdaInfo)
+    argnames = li.slotnames[1:li.nargs]
+    if _arg_offset == 0
+        return argnames
+    else
+        return argnames[_arg_offset:end]
+    end
 end
 
+get_args(m::Method) = get_args(m.lambda_template)
+get_args(f::Function) = get_args(first(methods(f)).lambda_template)
+
+else
+
+function get_args(li::LambdaStaticData)
+    e = li.ast
+    if !isa(e, Expr)
+        e = Base.uncompressed_ast(li)
+    end
+    argnames = e.args[1]
+    ## return array of symbols -- not args
+    if isa(argnames[1], Expr)
+        argnames = map(u -> u.args[1], argnames)
+    end
+
+    if _arg_offset == 0
+        return argnames
+    else
+        return argnames[_arg_offset:end]
+    end
+end
+
+function get_args(m::Method)
+    li = m.func
+    if !isa(li,LambdaStaticData)
+        li = li.code
+    end
+    get_args(li)
+end
+
+function get_args(f::Function)
+    try
+        get_args(first(methods(f)).func)
+    catch e
+        get_args(f.code)
+    end
+end
+
+end
+
+_arg_offset = 0
+_arg_offset = length(get_args(x->x))
 
 
 ## bind

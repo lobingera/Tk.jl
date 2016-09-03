@@ -267,6 +267,7 @@ function reveal(c::Canvas)
     tcl_doevent()
 end
 
+
 if is_apple() 
 if WORD_SIZE == 32
     typealias CGFloat Float32
